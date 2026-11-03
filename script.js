@@ -5,7 +5,6 @@
 // ==========================================
 
 const SUPABASE_URL = "https://jaaisayqqmljgoxehpzz.supabase.co";
-
 const SUPABASE_KEY = "sb_publishable_VKQv9RLc9Cn9xKTZSskx_A_ywNss51m";
 
 const supabaseClient = window.supabase.createClient(
@@ -31,16 +30,22 @@ const loginSection = document.getElementById("loginSection");
 const uploadSection = document.getElementById("uploadSection");
 
 const uploadForm = document.getElementById("uploadForm");
+const uploadButton = document.getElementById("uploadButton");
 const logoutButton = document.getElementById("logoutButton");
 const adminMessage = document.getElementById("adminMessage");
+
+const publishImmediately = document.getElementById("publishImmediately");
+const publishingCodeArea = document.getElementById("publishingCodeArea");
+const publishCodeInput = document.getElementById("publishCode");
 
 let allFiles = [];
 let selectedCategory = "all";
 let currentUser = null;
 let isAdmin = false;
+let loadingFiles = false;
 
 // ==========================================
-// SAFE HTML
+// HELPERS
 // ==========================================
 
 function escapeHTML(value = "") {
@@ -53,12 +58,13 @@ function escapeHTML(value = "") {
     })[character]);
 }
 
-// ==========================================
-// FILE ICONS
-// ==========================================
+function showMessage(message, isError = false) {
+    adminMessage.textContent = message;
+    adminMessage.style.color = isError ? "#ff6262" : "#b58aff";
+}
 
-function getFileIcon(file) {
-    const name = (file.original_filename || "").toLowerCase();
+function getFileIcon(filename = "") {
+    const name = filename.toLowerCase();
 
     if (name.endsWith(".pdf")) return "📕";
     if (name.endsWith(".docx")) return "📘";
@@ -69,38 +75,57 @@ function getFileIcon(file) {
 }
 
 // ==========================================
+// PUBLISHING CODE FIELD
+// ==========================================
+
+publishImmediately.addEventListener("change", () => {
+    publishingCodeArea.hidden = !publishImmediately.checked;
+
+    if (!publishImmediately.checked) {
+        publishCodeInput.value = "";
+    }
+});
+
+// ==========================================
 // LOAD FILES
 // ==========================================
 
 async function loadFiles() {
+    if (loadingFiles) return;
+
+    loadingFiles = true;
     fileGrid.innerHTML = "<p>Loading files...</p>";
     emptyState.hidden = true;
 
-    let query = supabaseClient
-        .from("files")
-        .select("*")
-        .order("created_at", { ascending: false });
+    try {
+        let query = supabaseClient
+            .from("files")
+            .select("*")
+            .order("created_at", { ascending: false });
 
-    // Visitors only see published files.
-    // Admins can also see unpublished files.
-    if (!isAdmin) {
-        query = query.eq("is_published", true);
+        if (!isAdmin) {
+            query = query.eq("is_published", true);
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+            console.error("File loading error:", error);
+            fileGrid.innerHTML =
+                "<p>Couldn't load files. Please refresh the page.</p>";
+            return;
+        }
+
+        allFiles = data || [];
+        renderFiles();
+
+    } finally {
+        loadingFiles = false;
     }
-
-    const { data, error } = await query;
-
-    if (error) {
-        console.error("File loading error:", error);
-        fileGrid.innerHTML = "<p>Couldn't load files. Please refresh the page.</p>";
-        return;
-    }
-
-    allFiles = data || [];
-    renderFiles();
 }
 
 // ==========================================
-// DISPLAY FILES
+// RENDER FILES
 // ==========================================
 
 function renderFiles() {
@@ -136,10 +161,18 @@ function renderFiles() {
             .from("school-files")
             .getPublicUrl(file.storage_path);
 
-        const icon = getFileIcon(file);
+        const icon = getFileIcon(file.original_filename);
         const title = escapeHTML(file.name);
-        const description = escapeHTML(file.description || "No description provided.");
+        const description = escapeHTML(
+            file.description || "No description provided."
+        );
         const filename = escapeHTML(file.original_filename);
+        const downloadUrl = escapeHTML(data.publicUrl);
+
+        const unpublishedLabel =
+            isAdmin && !file.is_published
+                ? '<span class="unpublished-label">Unpublished</span>'
+                : "";
 
         card.innerHTML = `
             <div class="file-icon">${icon}</div>
@@ -147,17 +180,17 @@ function renderFiles() {
             <div class="file-info">
                 <h3>${title}</h3>
                 <p>${description}</p>
-                <span class="file-category">${escapeHTML(file.category)}</span>
-                ${isAdmin && !file.is_published
-                    ? '<span class="unpublished-label">Unpublished</span>'
-                    : ""}
+                <span class="file-category">
+                    ${escapeHTML(file.category)}
+                </span>
+                ${unpublishedLabel}
             </div>
 
             <div class="file-footer">
                 <small>${filename}</small>
                 <a
                     class="download-button"
-                    href="${escapeHTML(data.publicUrl)}"
+                    href="${downloadUrl}"
                     target="_blank"
                     rel="noopener noreferrer"
                     download
@@ -165,19 +198,24 @@ function renderFiles() {
             </div>
         `;
 
+        // Unpublished files are visible to admins but not downloadable
+        // through the public library interface.
+        if (!file.is_published) {
+            const downloadLink = card.querySelector(".download-button");
+            if (downloadLink) {
+                downloadLink.remove();
+            }
+        }
+
         fileGrid.appendChild(card);
     });
 }
 
 // ==========================================
-// SEARCH
+// SEARCH AND FILTERS
 // ==========================================
 
 searchInput.addEventListener("input", renderFiles);
-
-// ==========================================
-// CATEGORY FILTERS
-// ==========================================
 
 categoryButtons.forEach(button => {
     button.addEventListener("click", () => {
@@ -205,39 +243,47 @@ function closeAdminPanel() {
 adminButton.addEventListener("click", openAdminPanel);
 closeAdmin.addEventListener("click", closeAdminPanel);
 
-function showMessage(message, isError = false) {
-    adminMessage.textContent = message;
-    adminMessage.style.color = isError ? "#ff6262" : "#a78bfa";
-}
-
 // ==========================================
 // CHECK ADMIN PERMISSIONS
 // ==========================================
 
 async function checkAdmin() {
-    const { data: { session } } =
-        await supabaseClient.auth.getSession();
+    const {
+        data: { session },
+        error
+    } = await supabaseClient.auth.getSession();
+
+    if (error) {
+        console.error("Session error:", error);
+    }
 
     currentUser = session?.user || null;
     isAdmin = false;
 
     if (currentUser) {
-        const { data, error } = await supabaseClient.rpc(
+        const { data, error: adminError } = await supabaseClient.rpc(
             "is_schooldownloads_admin"
         );
 
-        if (!error && data === true) {
-            isAdmin = true;
+        if (adminError) {
+            console.error("Admin check error:", adminError);
+        } else {
+            isAdmin = data === true;
         }
     }
 
     loginSection.hidden = isAdmin;
     uploadSection.hidden = !isAdmin;
 
-    adminButton.textContent = isAdmin ? "Admin Dashboard" : "Admin Login";
+    adminButton.textContent = isAdmin
+        ? "Admin Dashboard"
+        : "Admin Login";
 
     if (currentUser && !isAdmin) {
-        showMessage("This account does not have administrator access.", true);
+        showMessage(
+            "This account does not have administrator access.",
+            true
+        );
     }
 
     await loadFiles();
@@ -252,7 +298,7 @@ loginForm.addEventListener("submit", async event => {
 
     showMessage("Signing in...");
 
-    const email = document.getElementById("adminEmail").value;
+    const email = document.getElementById("adminEmail").value.trim();
     const password = document.getElementById("adminPassword").value;
 
     const { error } = await supabaseClient.auth.signInWithPassword({
@@ -269,6 +315,11 @@ loginForm.addEventListener("submit", async event => {
 
     if (isAdmin) {
         showMessage("Welcome back, administrator!");
+    } else {
+        showMessage(
+            "Signed in, but this account is not an administrator.",
+            true
+        );
     }
 });
 
@@ -288,13 +339,16 @@ logoutButton.addEventListener("click", async () => {
     isAdmin = false;
 
     loginForm.reset();
+    uploadForm.reset();
+    publishingCodeArea.hidden = true;
+
     showMessage("You've signed out.");
 
     await checkAdmin();
 });
 
 // ==========================================
-// UPLOAD FILES
+// FILE UPLOAD AND PUBLISHING
 // ==========================================
 
 uploadForm.addEventListener("submit", async event => {
@@ -306,13 +360,21 @@ uploadForm.addEventListener("submit", async event => {
     }
 
     const name = document.getElementById("fileName").value.trim();
-    const description = document.getElementById("fileDescription").value.trim();
+    const description =
+        document.getElementById("fileDescription").value.trim();
     const category = document.getElementById("fileCategory").value;
     const file = document.getElementById("fileInput").files[0];
-    const publish = document.getElementById("publishFile").checked;
 
-    if (!file || !name) {
-        showMessage("Please enter a title and select a file.", true);
+    const wantsPublishing = publishImmediately.checked;
+    const publishingCode = publishCodeInput.value;
+
+    if (!name || !file) {
+        showMessage("Please enter a title and choose a file.", true);
+        return;
+    }
+
+    if (wantsPublishing && !publishingCode.trim()) {
+        showMessage("Enter your publishing code first.", true);
         return;
     }
 
@@ -339,62 +401,158 @@ uploadForm.addEventListener("submit", async event => {
         return;
     }
 
-    showMessage("Uploading file...");
+    // This is a basic consistency check, not a malware scan.
+    const allowedMimeTypes = {
+        pdf: ["application/pdf"],
+        docx: [
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        ],
+        pptx: [
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+        ],
+        png: ["image/png"],
+        jpg: ["image/jpeg"],
+        jpeg: ["image/jpeg"]
+    };
 
-    const safeFilename = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const storagePath = `${crypto.randomUUID()}-${safeFilename}`;
-
-    // Upload the actual file to Supabase Storage.
-    const { error: uploadError } = await supabaseClient.storage
-        .from("school-files")
-        .upload(storagePath, file, {
-            upsert: false,
-            contentType: file.type || "application/octet-stream"
-        });
-
-    if (uploadError) {
-        showMessage(uploadError.message, true);
+    if (
+        file.type &&
+        !allowedMimeTypes[extension].includes(file.type)
+    ) {
+        showMessage("The file type doesn't match its extension.", true);
         return;
     }
 
-    // Save information about the uploaded file.
-    const { error: databaseError } = await supabaseClient
-        .from("files")
-        .insert({
-            name,
-            description,
-            category,
-            original_filename: file.name,
-            storage_path: storagePath,
-            mime_type: file.type || null,
-            size_bytes: file.size,
-            is_published: publish,
-            uploaded_by: currentUser.id
-        });
+    uploadButton.disabled = true;
+    uploadButton.textContent = "Uploading...";
+    showMessage("Uploading your file...");
 
-    if (databaseError) {
-        // Remove the uploaded file if its database record fails.
-        await supabaseClient.storage
+    let storagePath = null;
+
+    try {
+        const safeFilename = file.name.replace(
+            /[^a-zA-Z0-9._-]/g,
+            "_"
+        );
+
+        storagePath = `${crypto.randomUUID()}-${safeFilename}`;
+
+        // Upload the actual file.
+        const { error: uploadError } = await supabaseClient.storage
             .from("school-files")
-            .remove([storagePath]);
+            .upload(storagePath, file, {
+                upsert: false,
+                contentType: file.type || "application/octet-stream"
+            });
 
-        showMessage(databaseError.message, true);
-        return;
+        if (uploadError) {
+            throw uploadError;
+        }
+
+        // Every file starts unpublished.
+        const { data: insertedFile, error: databaseError } =
+            await supabaseClient
+                .from("files")
+                .insert({
+                    name,
+                    description,
+                    category,
+                    original_filename: file.name,
+                    storage_path: storagePath,
+                    mime_type: file.type || null,
+                    size_bytes: file.size,
+                    is_published: false,
+                    uploaded_by: currentUser.id
+                })
+                .select("id")
+                .single();
+
+        if (databaseError) {
+            throw databaseError;
+        }
+
+        // Publish only after Supabase verifies the publishing code.
+        if (wantsPublishing) {
+            showMessage("Checking publishing code...");
+
+            const { error: publishError } = await supabaseClient.rpc(
+                "publish_file",
+                {
+                    p_file_id: insertedFile.id,
+                    p_code: publishingCode
+                }
+            );
+
+            if (publishError) {
+                // The file has uploaded but remains unpublished.
+                uploadForm.reset();
+                publishingCodeArea.hidden = true;
+
+                showMessage(
+                    "File uploaded but NOT published. " +
+                    "The publishing code was rejected or publishing failed. " +
+                    "You can retry by uploading it again.",
+                    true
+                );
+
+                await loadFiles();
+                return;
+            }
+
+            showMessage("File uploaded and published successfully!");
+        } else {
+            showMessage(
+                "File uploaded successfully! It is still unpublished."
+            );
+        }
+
+        uploadForm.reset();
+        publishingCodeArea.hidden = true;
+
+        await loadFiles();
+
+    } catch (error) {
+        console.error("Upload error:", error);
+
+        // Remove the stored file if its database record was never created.
+        // If a database record exists, leave the file in place.
+        if (storagePath) {
+            const { data: existingRecord } = await supabaseClient
+                .from("files")
+                .select("id")
+                .eq("storage_path", storagePath)
+                .maybeSingle();
+
+            if (!existingRecord) {
+                await supabaseClient.storage
+                    .from("school-files")
+                    .remove([storagePath]);
+            }
+        }
+
+        showMessage(
+            error.message || "Something went wrong during upload.",
+            true
+        );
+
+    } finally {
+        uploadButton.disabled = false;
+        uploadButton.textContent = "Upload File";
     }
+});
 
-    uploadForm.reset();
+// ==========================================
+// AUTH STATE
+// ==========================================
 
-    showMessage("File uploaded successfully!");
-
-    await loadFiles();
+supabaseClient.auth.onAuthStateChange(() => {
+    setTimeout(() => {
+        checkAdmin();
+    }, 0);
 });
 
 // ==========================================
 // START WEBSITE
 // ==========================================
-
-supabaseClient.auth.onAuthStateChange(() => {
-    setTimeout(() => checkAdmin(), 0);
-});
 
 checkAdmin();
