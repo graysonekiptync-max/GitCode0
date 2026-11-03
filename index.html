@@ -1,196 +1,155 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="SchoolDownloads - Your community library for educational resources.">
     <title>SchoolDownloads</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
-<header class="navbar">
-    <a href="#" class="logo">School<span>Downloads</span></a>
+    <header class="navbar">
+        <a href="#" class="logo">School<span>Downloads</span></a>
 
-    <nav>
-        <a href="#home">Home</a>
-        <a href="#browse">Browse Files</a>
-        <a href="#about">About</a>
-        <button id="adminButton" class="admin-button">Admin Login</button>
-    </nav>
-</header>
+        <nav>
+            <a href="#home">Home</a>
+            <a href="#browse">Browse Files</a>
+            <a href="#about">About</a>
+            <button id="adminLoginButton" class="button">Admin Login</button>
+            <button id="adminLogoutButton" class="button" hidden>Log Out</button>
+        </nav>
+    </header>
 
-<main>
-    <section class="hero" id="home">
-        <div class="hero-content">
-            <p class="hero-tag">YOUR COMMUNITY FILE LIBRARY</p>
-            <h1>Everything you need.<br><span>One place.</span></h1>
-            <p class="hero-description">
-                Discover and download useful educational resources,
-                documents and files shared by your community.
-            </p>
-            <a href="#browse" class="explore-button">Explore Files</a>
-        </div>
-    </section>
+    <main>
+        <section id="home" class="hero">
+            <div class="hero-content">
+                <p class="eyebrow">YOUR COMMUNITY FILE LIBRARY</p>
+                <h1>Everything you need.<br><span>One place.</span></h1>
+                <p class="hero-description">
+                    Discover and download useful educational resources,
+                    documents and files shared by your community.
+                </p>
+                <a href="#browse" class="button">Explore Files</a>
+            </div>
+        </section>
 
-    <section class="browse-section" id="browse">
-        <div class="section-heading">
-            <p class="hero-tag">THE LIBRARY</p>
-            <h2>Browse <span>Downloads</span></h2>
-            <p>Find the files you're looking for.</p>
-        </div>
+        <section id="browse" class="section">
+            <div class="section-heading">
+                <p class="eyebrow">THE LIBRARY</p>
+                <h2>Browse Files</h2>
+                <p>Find the resources you're looking for.</p>
+            </div>
 
-        <div class="search-container">
             <input
                 type="search"
                 id="searchInput"
                 placeholder="Search files..."
                 autocomplete="off"
             >
-        </div>
 
-        <div class="category-buttons">
-            <button class="category-btn active" data-category="all">All</button>
-            <button class="category-btn" data-category="documents">Documents</button>
-            <button class="category-btn" data-category="images">Images</button>
-            <button class="category-btn" data-category="other">Other</button>
-        </div>
-
-        <div id="fileGrid" class="file-grid">
-            <p>Loading files...</p>
-        </div>
-
-        <div id="emptyState" class="empty-state" hidden>
-            <h3>No files found</h3>
-            <p>Try another search or check back later.</p>
-        </div>
-    </section>
-
-    <section class="about-section" id="about">
-        <div class="section-heading">
-            <p class="hero-tag">ABOUT US</p>
-            <h2>Made for <span>sharing.</span></h2>
-            <p>
-                SchoolDownloads is a community library where useful
-                educational resources can be shared and discovered.
-            </p>
-        </div>
-    </section>
-
-    <!-- ADMIN PANEL -->
-    <section id="adminPanel" class="admin-panel" hidden>
-        <div class="admin-box">
-
-            <button id="closeAdmin" class="close-button" type="button">✕</button>
-
-            <!-- LOGIN -->
-            <div id="loginSection">
-                <p class="hero-tag">RESTRICTED ACCESS</p>
-                <h2>Admin <span>Login</span></h2>
-                <p>Sign in to manage SchoolDownloads.</p>
-
-                <form id="loginForm">
-                    <input
-                        type="email"
-                        id="adminEmail"
-                        placeholder="Email address"
-                        required
-                    >
-
-                    <input
-                        type="password"
-                        id="adminPassword"
-                        placeholder="Password"
-                        required
-                    >
-
-                    <button type="submit">Sign In</button>
-                </form>
+            <div class="categories" id="categoryButtons">
+                <button class="category active" data-category="all">All</button>
+                <button class="category" data-category="documents">Documents</button>
+                <button class="category" data-category="maths">Maths</button>
+                <button class="category" data-category="science">Science</button>
+                <button class="category" data-category="other">Other</button>
             </div>
 
-            <!-- ADMIN DASHBOARD -->
-            <div id="uploadSection" hidden>
-                <p class="hero-tag">ADMIN DASHBOARD</p>
-                <h2>Manage <span>Files</span></h2>
+            <div id="fileGrid" class="file-grid">
+                <p>Loading files...</p>
+            </div>
+        </section>
+
+        <section id="about" class="section about-section">
+            <div class="section-heading">
+                <p class="eyebrow">ABOUT US</p>
+                <h2>One library. Everyone benefits.</h2>
+                <p>
+                    SchoolDownloads is a community library for sharing
+                    useful educational resources and documents.
+                </p>
+            </div>
+        </section>
+
+        <!-- ADMIN LOGIN -->
+        <div id="loginModal" class="modal" hidden>
+            <div class="modal-content">
+                <button class="modal-close" id="closeLoginModal" aria-label="Close">×</button>
+                <p class="eyebrow">ADMINISTRATOR</p>
+                <h2>Admin Login</h2>
+
+                <form id="loginForm">
+                    <label for="adminEmail">Email</label>
+                    <input id="adminEmail" type="email" required autocomplete="username">
+
+                    <label for="adminPassword">Password</label>
+                    <input id="adminPassword" type="password" required autocomplete="current-password">
+
+                    <button class="button" type="submit">Log In</button>
+                    <p id="loginMessage" class="message"></p>
+                </form>
+            </div>
+        </div>
+
+        <!-- ADMIN DASHBOARD -->
+        <section id="adminPanel" class="section admin-panel" hidden>
+            <div class="section-heading">
+                <p class="eyebrow">CONTROL CENTRE</p>
+                <h2>Admin Dashboard</h2>
                 <p>Upload resources and manage your library.</p>
+            </div>
+
+            <div class="admin-upload">
+                <h3>Upload a File</h3>
 
                 <form id="uploadForm">
                     <label for="fileName">File title</label>
-                    <input
-                        type="text"
-                        id="fileName"
-                        placeholder="e.g. Mathematics Revision"
-                        required
-                    >
+                    <input id="fileName" type="text" maxlength="120" required>
 
                     <label for="fileDescription">Description</label>
-                    <textarea
-                        id="fileDescription"
-                        placeholder="Describe this file..."
-                        rows="3"
-                    ></textarea>
+                    <textarea id="fileDescription" maxlength="1000"></textarea>
 
                     <label for="fileCategory">Category</label>
                     <select id="fileCategory" required>
                         <option value="documents">Documents</option>
-                        <option value="images">Images</option>
+                        <option value="maths">Maths</option>
+                        <option value="science">Science</option>
                         <option value="other">Other</option>
                     </select>
 
-                    <label for="fileInput">Choose a file</label>
+                    <label for="fileUpload">Choose a file</label>
                     <input
+                        id="fileUpload"
                         type="file"
-                        id="fileInput"
                         accept=".pdf,.docx,.pptx,.png,.jpg,.jpeg"
                         required
                     >
 
-                    <div class="publish-option">
-                        <input
-                            type="checkbox"
-                            id="publishImmediately"
-                        >
-                        <label for="publishImmediately">
-                            Publish this file immediately
-                        </label>
-                    </div>
+                    <p class="small-note">
+                        Accepted: PDF, DOCX, PPTX, PNG and JPG. Maximum size: 20 MB.
+                    </p>
 
-                    <div id="publishingCodeArea" hidden>
-                        <label for="publishCode">Publishing code</label>
-                        <input
-                            type="password"
-                            id="publishCode"
-                            placeholder="Enter publishing code"
-                            autocomplete="off"
-                        >
-                        <small>
-                            Required only when publishing immediately.
-                        </small>
-                    </div>
-
-                    <button type="submit" id="uploadButton">
+                    <button class="button" type="submit" id="uploadButton">
                         Upload File
                     </button>
-                </form>
 
-                <button id="logoutButton" class="logout-button" type="button">
-                    Sign Out
-                </button>
+                    <p id="uploadMessage" class="message"></p>
+                </form>
             </div>
 
-            <p id="adminMessage" role="status"></p>
-        </div>
-    </section>
-</main>
+            <div class="admin-files">
+                <h3>Unpublished Files</h3>
+                <p>These files are waiting for you to publish them.</p>
+                <div id="pendingFiles"></div>
+            </div>
+        </section>
+    </main>
 
-<footer>
-    <a href="#" class="logo">School<span>Downloads</span></a>
-    <p>© 2026 SchoolDownloads. Built for sharing.</p>
-</footer>
+    <footer>
+        <p>© 2026 SchoolDownloads. Community file library.</p>
+    </footer>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="script.js"></script>
-
+    <script src="script.js"></script>
 </body>
 </html>
