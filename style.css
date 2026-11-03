@@ -1,3 +1,4 @@
+
 * { box-sizing: border-box; }
 
 :root {
@@ -204,6 +205,7 @@ input:focus, textarea:focus, select:focus {
 }
 
 .file-card .button { margin-top: 8px; }
+
 .upload-section { max-width: 900px; }
 
 .upload-card {
@@ -227,63 +229,22 @@ input:focus, textarea:focus, select:focus {
   margin: 0 0 8px;
 }
 
-.publish-main { align-self: flex-start; min-width: 150px; }
-
-.publish-main.red {
-  background: #d9273f;
-  border-color: #ff5266;
-  box-shadow: 0 0 18px #e3263644;
+.publish-main {
+  align-self: flex-start;
+  min-width: 150px;
 }
 
 .message {
   min-height: 20px;
   color: #c8b0ff;
   font-size: 14px;
+  overflow-wrap: anywhere;
 }
 
-.message.error, .password-error { color: #ff6575; }
+.message.error { color: #ff6575; }
+.message.success { color: #75e6a0; }
+
 .about-section { border-top: 1px solid #211b30; }
-
-.modal {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 20px;
-  background: #000c;
-}
-
-.modal[hidden] { display: none; }
-
-.modal-content {
-  position: relative;
-  width: 100%;
-  max-width: 420px;
-  padding: 30px;
-  border: 1px solid var(--purple2);
-  border-radius: 16px;
-  background: #111018;
-  box-shadow: 0 20px 80px #0009;
-}
-
-.modal-content h2 { margin: 8px 0; }
-.modal-content input { margin: 15px 0; }
-.modal-content .button { width: 100%; }
-
-.modal-close {
-  position: absolute;
-  top: 12px;
-  right: 15px;
-  background: none;
-  border: 0;
-  color: #aaa;
-  font-size: 27px;
-  cursor: pointer;
-}
-
-.password-error { font-size: 13px; line-height: 1.5; }
 
 footer {
   padding: 25px;
