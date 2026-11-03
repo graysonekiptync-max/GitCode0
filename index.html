@@ -4,123 +4,165 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#080710">
+    <meta name="description" content="SchoolDownloads - Your community library for educational resources.">
     <title>SchoolDownloads</title>
-    <meta name="description" content="SchoolDownloads - Your school file sharing hub.">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <div class="background-glow"></div>
-
     <header class="navbar">
-        <a href="#" class="logo">
-            <span class="logo-icon">S</span>
-            <span>School<span class="purple">Downloads</span></span>
-        </a>
+        <a href="#" class="logo">School<span>Downloads</span></a>
 
-        <nav class="nav-links">
+        <nav>
             <a href="#home">Home</a>
-            <a href="#files">Browse Files</a>
+            <a href="#browse">Browse Files</a>
             <a href="#about">About</a>
+            <button id="adminButton" class="admin-button">Admin Login</button>
         </nav>
-
-        <a href="#files" class="nav-button">Explore Files <span>↗</span></a>
     </header>
 
     <main>
         <section class="hero" id="home">
-            <div class="hero-badge">
-                <span class="status-dot"></span>
-                YOUR SCHOOL FILE HUB
-            </div>
-
-            <h1>
-                Everything you need.<br>
-                <span class="gradient-text">One place.</span>
-            </h1>
-
-            <p class="hero-description">
-                Discover, share and download school resources.
-                All your files, organised in one simple place.
-            </p>
-
-            <div class="hero-actions">
-                <a href="#files" class="primary-button">Browse Downloads ↗</a>
-                <a href="#about" class="secondary-button">Learn More</a>
-            </div>
-
-            <div class="hero-stats">
-                <div>
-                    <strong>01</strong>
-                    <span>Simple access</span>
-                </div>
-                <div>
-                    <strong>02</strong>
-                    <span>Organised files</span>
-                </div>
-                <div>
-                    <strong>03</strong>
-                    <span>Free platform</span>
-                </div>
+            <div class="hero-content">
+                <p class="hero-tag">YOUR COMMUNITY FILE LIBRARY</p>
+                <h1>Everything you need.<br><span>One place.</span></h1>
+                <p class="hero-description">
+                    Discover and download useful educational resources,
+                    documents and files shared by your community.
+                </p>
+                <a href="#browse" class="explore-button">Explore Files</a>
             </div>
         </section>
 
-        <section class="files-section" id="files">
+        <section class="browse-section" id="browse">
             <div class="section-heading">
-                <div>
-                    <span class="eyebrow">THE LIBRARY</span>
-                    <h2>Explore <span class="purple">Downloads.</span></h2>
-                    <p>Find the resources you're looking for.</p>
-                </div>
-
-                <div class="file-count">FILE LIBRARY <span>●</span></div>
+                <p class="hero-tag">THE LIBRARY</p>
+                <h2>Browse <span>Downloads</span></h2>
+                <p>Find the files you're looking for.</p>
             </div>
 
             <div class="search-container">
-                <span>⌕</span>
-                <input type="text" id="searchInput"
-                    placeholder="Search files and resources...">
-                <kbd>SEARCH</kbd>
+                <input
+                    type="search"
+                    id="searchInput"
+                    placeholder="Search files..."
+                    autocomplete="off"
+                >
             </div>
 
-            <div class="category-list">
-                <button class="category active" data-category="all">All Files</button>
-                <button class="category" data-category="documents">Documents</button>
-                <button class="category" data-category="images">Images</button>
-                <button class="category" data-category="other">Other</button>
+            <div class="category-buttons">
+                <button class="category-btn active" data-category="all">All</button>
+                <button class="category-btn" data-category="documents">Documents</button>
+                <button class="category-btn" data-category="images">Images</button>
+                <button class="category-btn" data-category="other">Other</button>
             </div>
 
-            <div class="file-grid" id="fileGrid">
-                <!-- File cards will be added in script.js -->
+            <div id="fileGrid" class="file-grid">
+                <p>Loading files...</p>
             </div>
 
-            <div class="empty-state" id="emptyState" hidden>
-                <div>⌕</div>
+            <div id="emptyState" class="empty-state" hidden>
                 <h3>No files found</h3>
-                <p>Try another search or category.</p>
+                <p>Try another search or check back later.</p>
             </div>
         </section>
 
         <section class="about-section" id="about">
-            <span class="eyebrow">ABOUT THE PLATFORM</span>
-            <h2>Built for <span class="gradient-text">easy sharing.</span></h2>
-            <p>
-                SchoolDownloads is a central place to discover and
-                access useful school resources.
-            </p>
+            <div class="section-heading">
+                <p class="hero-tag">ABOUT US</p>
+                <h2>Made for <span>sharing.</span></h2>
+                <p>
+                    SchoolDownloads is a community library where useful
+                    educational resources can be shared and discovered.
+                </p>
+            </div>
+        </section>
+
+        <!-- ADMIN LOGIN -->
+        <section id="adminPanel" class="admin-panel" hidden>
+            <div class="admin-box">
+                <button id="closeAdmin" class="close-button" type="button">✕</button>
+
+                <div id="loginSection">
+                    <p class="hero-tag">RESTRICTED ACCESS</p>
+                    <h2>Admin <span>Login</span></h2>
+                    <p>Sign in to manage SchoolDownloads.</p>
+
+                    <form id="loginForm">
+                        <input
+                            type="email"
+                            id="adminEmail"
+                            placeholder="Email address"
+                            required
+                        >
+                        <input
+                            type="password"
+                            id="adminPassword"
+                            placeholder="Password"
+                            required
+                        >
+                        <button type="submit">Sign In</button>
+                    </form>
+                </div>
+
+                <div id="uploadSection" hidden>
+                    <p class="hero-tag">ADMIN DASHBOARD</p>
+                    <h2>Manage <span>Files</span></h2>
+                    <p>You are signed in as an administrator.</p>
+
+                    <form id="uploadForm">
+                        <input
+                            type="text"
+                            id="fileName"
+                            placeholder="File title"
+                            required
+                        >
+
+                        <textarea
+                            id="fileDescription"
+                            placeholder="File description"
+                            rows="3"
+                        ></textarea>
+
+                        <select id="fileCategory" required>
+                            <option value="documents">Documents</option>
+                            <option value="images">Images</option>
+                            <option value="other">Other</option>
+                        </select>
+
+                        <label for="fileInput">Choose a file</label>
+                        <input
+                            type="file"
+                            id="fileInput"
+                            accept=".pdf,.docx,.pptx,.png,.jpg,.jpeg"
+                            required
+                        >
+
+                        <label class="publish-option">
+                            <input type="checkbox" id="publishFile" checked>
+                            Publish immediately
+                        </label>
+
+                        <button type="submit">Upload File</button>
+                    </form>
+
+                    <button id="logoutButton" class="logout-button" type="button">
+                        Sign Out
+                    </button>
+                </div>
+
+                <p id="adminMessage" role="status"></p>
+            </div>
         </section>
     </main>
 
     <footer>
-        <a href="#" class="logo">
-            <span class="logo-icon">S</span>
-            <span>School<span class="purple">Downloads</span></span>
-        </a>
-        <p>© 2026 SchoolDownloads. All rights reserved.</p>
-        <span class="footer-status"><span class="status-dot"></span> ONLINE</span>
+        <a href="#" class="logo">School<span>Downloads</span></a>
+        <p>© 2026 SchoolDownloads. Built for sharing.</p>
     </footer>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="script.js"></script>
+
 </body>
 </html>
