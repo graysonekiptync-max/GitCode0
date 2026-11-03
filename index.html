@@ -1,0 +1,126 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#080710">
+    <title>SchoolDownloads</title>
+    <meta name="description" content="SchoolDownloads - Your school file sharing hub.">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="background-glow"></div>
+
+    <header class="navbar">
+        <a href="#" class="logo">
+            <span class="logo-icon">S</span>
+            <span>School<span class="purple">Downloads</span></span>
+        </a>
+
+        <nav class="nav-links">
+            <a href="#home">Home</a>
+            <a href="#files">Browse Files</a>
+            <a href="#about">About</a>
+        </nav>
+
+        <a href="#files" class="nav-button">Explore Files <span>↗</span></a>
+    </header>
+
+    <main>
+        <section class="hero" id="home">
+            <div class="hero-badge">
+                <span class="status-dot"></span>
+                YOUR SCHOOL FILE HUB
+            </div>
+
+            <h1>
+                Everything you need.<br>
+                <span class="gradient-text">One place.</span>
+            </h1>
+
+            <p class="hero-description">
+                Discover, share and download school resources.
+                All your files, organised in one simple place.
+            </p>
+
+            <div class="hero-actions">
+                <a href="#files" class="primary-button">Browse Downloads ↗</a>
+                <a href="#about" class="secondary-button">Learn More</a>
+            </div>
+
+            <div class="hero-stats">
+                <div>
+                    <strong>01</strong>
+                    <span>Simple access</span>
+                </div>
+                <div>
+                    <strong>02</strong>
+                    <span>Organised files</span>
+                </div>
+                <div>
+                    <strong>03</strong>
+                    <span>Free platform</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="files-section" id="files">
+            <div class="section-heading">
+                <div>
+                    <span class="eyebrow">THE LIBRARY</span>
+                    <h2>Explore <span class="purple">Downloads.</span></h2>
+                    <p>Find the resources you're looking for.</p>
+                </div>
+
+                <div class="file-count">FILE LIBRARY <span>●</span></div>
+            </div>
+
+            <div class="search-container">
+                <span>⌕</span>
+                <input type="text" id="searchInput"
+                    placeholder="Search files and resources...">
+                <kbd>SEARCH</kbd>
+            </div>
+
+            <div class="category-list">
+                <button class="category active" data-category="all">All Files</button>
+                <button class="category" data-category="documents">Documents</button>
+                <button class="category" data-category="images">Images</button>
+                <button class="category" data-category="other">Other</button>
+            </div>
+
+            <div class="file-grid" id="fileGrid">
+                <!-- File cards will be added in script.js -->
+            </div>
+
+            <div class="empty-state" id="emptyState" hidden>
+                <div>⌕</div>
+                <h3>No files found</h3>
+                <p>Try another search or category.</p>
+            </div>
+        </section>
+
+        <section class="about-section" id="about">
+            <span class="eyebrow">ABOUT THE PLATFORM</span>
+            <h2>Built for <span class="gradient-text">easy sharing.</span></h2>
+            <p>
+                SchoolDownloads is a central place to discover and
+                access useful school resources.
+            </p>
+        </section>
+    </main>
+
+    <footer>
+        <a href="#" class="logo">
+            <span class="logo-icon">S</span>
+            <span>School<span class="purple">Downloads</span></span>
+        </a>
+        <p>© 2026 SchoolDownloads. All rights reserved.</p>
+        <span class="footer-status"><span class="status-dot"></span> ONLINE</span>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
