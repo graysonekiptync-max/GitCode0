@@ -1,348 +1,455 @@
+const $ = (id) => document.getElementById(id);
 
-// ============================================
-// SCHOOL DOWNLOADS - SUPABASE CONFIGURATION
-// ============================================
+const defaultFiles = {
+  "index.html": `<!DOCTYPE html>
+<html>
+<head>
+  <title>My GitCode Project</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>Hello, GitCode!</h1>
+  <p>Edit this file and click Run to preview it.</p>
+  <button onclick="sayHello()">Click me</button>
+  <script src="script.js"><\/script>
+</body>
+</html>`,
 
-const SUPABASE_URL = "https://jaaisayqqmljgoxehpzz.supabase.co";
-const SUPABASE_KEY = "sb_publishable_VKQv9RLc9Cn9xKTZSskx_A_ywNss51m";
-
-const supabaseClient = window.supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_KEY
-);
-
-const BUCKET_NAME = "school-files";
-
-let allFiles = [];
-let selectedCategory = "all";
-
-
-// ============================================
-// ELEMENTS
-// ============================================
-
-const fileGrid = document.getElementById("fileGrid");
-const searchInput = document.getElementById("searchInput");
-const uploadForm = document.getElementById("uploadForm");
-const uploadMessage = document.getElementById("uploadMessage");
-const uploadButton = document.getElementById("uploadButton");
-
-
-// ============================================
-// HELPERS
-// ============================================
-
-function escapeHTML(value) {
-    return String(value ?? "").replace(/[&<>"']/g, character => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#039;"
-    })[character]);
+  "style.css": `body {
+  font-family: Arial, sans-serif;
+  background: #f4f4f4;
+  padding: 40px;
 }
 
-function showMessage(element, message, type = "") {
-    element.textContent = message;
-    element.classList.remove("error", "success");
+h1 {
+  color: #7258e8;
+}`,
 
-    if (type) {
-        element.classList.add(type);
-    }
+  "script.js": `function sayHello() {
+  alert("Hello from GitCode!");
 }
 
-function formatFileSize(bytes) {
-    if (bytes === null || bytes === undefined) {
-        return "Unknown size";
-    }
+console.log("JavaScript is working!");`,
 
-    if (bytes < 1024) {
-        return `${bytes} bytes`;
-    }
+  "main.py": `print("Hello from GitCode!")
 
-    if (bytes < 1024 * 1024) {
-        return `${(bytes / 1024).toFixed(1)} KB`;
-    }
+name = "Developer"
+print(f"Welcome, {name}!")`
+};
 
-    if (bytes < 1024 * 1024 * 1024) {
-        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-    }
+let files = {};
+let openFiles = [];
+let activeFile = "index.html";
+let editor;
+let pyodide = null;
+let pyodideLoading = false;
 
-    return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+function loadProject() {
+  try {
+    const saved = localStorage.getItem("gitcode-project");
+    files = saved ? JSON.parse(saved) : { ...defaultFiles };
+  } catch {
+    files = { ...defaultFiles };
+  }
+
+  openFiles = ["index.html"];
+  activeFile = "index.html";
+}
+
+function saveProject() {
+  files[activeFile] = editor.getValue();
+  localStorage.setItem("gitcode-project", JSON.stringify(files));
+  setStatus("Project saved");
+}
+
+function setStatus(message) {
+  $("statusMessage").textContent = message;
+}
+
+function getExtension(filename) {
+  return filename.split(".").pop().toLowerCase();
+}
+
+function getMode(filename) {
+  const ext = getExtension(filename);
+
+  if (ext === "html" || ext === "htm") return "htmlmixed";
+  if (ext === "css") return "css";
+  if (ext === "js" || ext === "mjs") return "javascript";
+  if (ext === "py") return "python";
+
+  return "text";
 }
 
 function getFileIcon(filename) {
-    const extension = filename.includes(".")
-        ? filename.split(".").pop().toLowerCase()
-        : "";
+  const ext = getExtension(filename);
 
-    const icons = {
-        pdf: "📕",
-        doc: "📘",
-        docx: "📘",
-        txt: "📝",
-        rtf: "📝",
-        ppt: "📊",
-        pptx: "📊",
-        xls: "📗",
-        xlsx: "📗",
-        csv: "📊",
-        zip: "🗜️",
-        rar: "🗜️",
-        "7z": "🗜️",
-        png: "🖼️",
-        jpg: "🖼️",
-        jpeg: "🖼️",
-        gif: "🖼️",
-        webp: "🖼️",
-        mp3: "🎵",
-        wav: "🎵",
-        mp4: "🎬",
-        mov: "🎬",
-        exe: "⚙️"
+  const icons = {
+    html: "🌐",
+    htm: "🌐",
+    css: "🎨",
+    js: "📜",
+    mjs: "📜",
+    py: "🐍",
+    json: "📋",
+    txt: "📄",
+    md: "📝"
+  };
+
+  return icons[ext] || "📄";
+}
+
+function renderFileTree() {
+  const tree = $("fileTree");
+  tree.innerHTML = "";
+
+  Object.keys(files).sort().forEach(filename => {
+    const item = document.createElement("div");
+    item.className = "file-item";
+
+    if (filename === activeFile) {
+      item.classList.add("active");
+    }
+
+    const icon = document.createElement("span");
+    icon.className = "file-icon";
+    icon.textContent = getFileIcon(filename);
+
+    const label = document.createElement("span");
+    label.textContent = filename;
+
+    item.append(icon, label);
+
+    item.onclick = () => openFile(filename);
+
+    tree.appendChild(item);
+  });
+}
+
+function renderTabs() {
+  const tabs = $("tabs");
+  tabs.innerHTML = "";
+
+  openFiles.forEach(filename => {
+    const tab = document.createElement("div");
+    tab.className = "tab";
+
+    if (filename === activeFile) {
+      tab.classList.add("active");
+    }
+
+    const icon = document.createElement("span");
+    icon.textContent = getFileIcon(filename);
+
+    const label = document.createElement("span");
+    label.textContent = filename;
+
+    const close = document.createElement("span");
+    close.className = "tab-close";
+    close.textContent = "×";
+
+    close.onclick = event => {
+      event.stopPropagation();
+      closeFile(filename);
     };
 
-    return icons[extension] || "📄";
+    tab.append(icon, label, close);
+    tab.onclick = () => openFile(filename);
+
+    tabs.appendChild(tab);
+  });
 }
 
+function openFile(filename) {
+  if (!Object.prototype.hasOwnProperty.call(files, filename)) return;
 
-// ============================================
-// LOAD PUBLIC FILES
-// ============================================
+  files[activeFile] = editor.getValue();
 
-async function loadFiles() {
-    fileGrid.innerHTML = "<p>Loading files...</p>";
+  activeFile = filename;
 
-    try {
-        const { data, error } = await supabaseClient
-            .from("files")
-            .select("*")
-            .eq("is_published", true)
-            .order("created_at", { ascending: false });
+  if (!openFiles.includes(filename)) {
+    openFiles.push(filename);
+  }
 
-        if (error) {
-            throw error;
-        }
+  editor.setOption("mode", getMode(filename));
+  editor.setValue(files[filename]);
+  editor.clearHistory();
 
-        allFiles = data || [];
-        displayFiles();
+  $("currentFile").textContent = filename;
+  $("breadcrumbs").textContent = filename;
+  $("languageLabel").textContent = getExtension(filename).toUpperCase();
 
-    } catch (error) {
-        console.error("Loading files failed:", error);
-        fileGrid.innerHTML =
-            "<p>Couldn't load files. Please try again later.</p>";
+  renderTabs();
+  renderFileTree();
+  editor.refresh();
+}
+
+function closeFile(filename) {
+  if (filename === activeFile) {
+    files[activeFile] = editor.getValue();
+  }
+
+  openFiles = openFiles.filter(name => name !== filename);
+
+  if (openFiles.length === 0) {
+    openFiles.push("index.html");
+  }
+
+  if (activeFile === filename) {
+    activeFile = openFiles[0];
+    editor.setOption("mode", getMode(activeFile));
+    editor.setValue(files[activeFile] || "");
+    $("currentFile").textContent = activeFile;
+    $("breadcrumbs").textContent = activeFile;
+    $("languageLabel").textContent = getExtension(activeFile).toUpperCase();
+  }
+
+  renderTabs();
+  renderFileTree();
+}
+
+function createFile() {
+  const filename = prompt("Enter a filename (example: app.js):");
+
+  if (!filename) return;
+
+  if (files[filename]) {
+    alert("That file already exists.");
+    return;
+  }
+
+  files[filename] = "";
+  openFile(filename);
+  saveProject();
+}
+
+function createFolder() {
+  alert(
+    "Folder creation is not available in this starter version. " +
+    "Files are stored in a flat project workspace."
+  );
+}
+
+function showPanel(name) {
+  $("bottomPanel").classList.remove("closed");
+
+  document.querySelectorAll(".panel-content").forEach(panel => {
+    panel.classList.add("hidden");
+  });
+
+  $(name).classList.remove("hidden");
+
+  document.querySelectorAll(".panel-tab").forEach(tab => {
+    tab.classList.toggle("active", tab.dataset.panel === name);
+  });
+}
+
+function writeOutput(message, type = "") {
+  const line = document.createElement("div");
+  line.className = "output-line " + type;
+  line.textContent = message;
+  $("output").appendChild(line);
+}
+
+function clearOutput() {
+  $("output").innerHTML = "";
+}
+
+function runJavaScript(code) {
+  clearOutput();
+  showPanel("output");
+
+  const originalLog = console.log;
+  const originalError = console.error;
+  const originalWarn = console.warn;
+
+  console.log = (...args) => {
+    writeOutput(args.map(String).join(" "));
+    originalLog(...args);
+  };
+
+  console.error = (...args) => {
+    writeOutput(args.map(String).join(" "), "error");
+    originalError(...args);
+  };
+
+  console.warn = (...args) => {
+    writeOutput(args.map(String).join(" "), "error");
+    originalWarn(...args);
+  };
+
+  try {
+    const result = new Function(code)();
+
+    if (result !== undefined) {
+      writeOutput(String(result), "success");
     }
+
+    setStatus("JavaScript executed");
+  } catch (error) {
+    writeOutput(error.stack || error.message, "error");
+    setStatus("Execution failed");
+  } finally {
+    console.log = originalLog;
+    console.error = originalError;
+    console.warn = originalWarn;
+  }
 }
 
+function runHTML() {
+  const html = files["index.html"] || editor.getValue();
+  const css = files["style.css"] || "";
+  const js = files["script.js"] || "";
 
-// ============================================
-// DISPLAY FILES
-// ============================================
+  const combined = html
+    .replace(
+      '<link rel="stylesheet" href="style.css">',
+      `<style>${css}</style>`
+    )
+    .replace(
+      '<script src="script.js"><\/script>',
+      `<script>${js}<\/script>`
+    );
 
-function displayFiles() {
-    const searchTerm = searchInput.value.trim().toLowerCase();
+  $("previewFrame").srcdoc = combined;
+  showPanel("preview");
+  setStatus("Preview updated");
+}
 
-    const filteredFiles = allFiles.filter(file => {
-        const name = String(file.name || "").toLowerCase();
-        const description = String(file.description || "").toLowerCase();
+async function loadPyodideRuntime() {
+  if (pyodide) return pyodide;
 
-        const matchesSearch =
-            name.includes(searchTerm) ||
-            description.includes(searchTerm);
+  if (pyodideLoading) {
+    while (!pyodide) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    return pyodide;
+  }
 
-        const matchesCategory =
-            selectedCategory === "all" ||
-            file.category === selectedCategory;
+  pyodideLoading = true;
+  setStatus("Loading Python runtime...");
 
-        return matchesSearch && matchesCategory;
+  try {
+    const script = document.createElement("script");
+    script.src =
+      "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js";
+
+    document.head.appendChild(script);
+
+    await new Promise((resolve, reject) => {
+      script.onload = resolve;
+      script.onerror = reject;
     });
 
-    if (filteredFiles.length === 0) {
-        fileGrid.innerHTML = "<p>No files found.</p>";
-        return;
-    }
+    pyodide = await loadPyodide();
 
-    fileGrid.innerHTML = filteredFiles.map(file => {
-        const { data } = supabaseClient.storage
-            .from(BUCKET_NAME)
-            .getPublicUrl(file.storage_path);
-
-        const safeUrl = escapeHTML(data.publicUrl);
-        const icon = getFileIcon(file.original_filename || file.name);
-
-        return `
-            <article class="file-card">
-                <div class="file-icon">${icon}</div>
-
-                <h3>${escapeHTML(file.name)}</h3>
-
-                <p>${escapeHTML(
-                    file.description || "No description provided."
-                )}</p>
-
-                <span class="file-category">
-                    ${escapeHTML(file.category || "other")}
-                </span>
-
-                <span class="file-size">
-                    ${formatFileSize(file.size_bytes)}
-                </span>
-
-                <a
-                    class="button"
-                    href="${safeUrl}"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    download
-                >Download</a>
-            </article>
-        `;
-    }).join("");
+    return pyodide;
+  } finally {
+    pyodideLoading = false;
+  }
 }
 
+async function runPython(code) {
+  clearOutput();
+  showPanel("output");
 
-// ============================================
-// SEARCH AND CATEGORIES
-// ============================================
+  try {
+    const runtime = await loadPyodideRuntime();
 
-searchInput.addEventListener("input", displayFiles);
-
-document.querySelectorAll(".category").forEach(button => {
-    button.addEventListener("click", () => {
-        document.querySelectorAll(".category").forEach(item => {
-            item.classList.remove("active");
-        });
-
-        button.classList.add("active");
-
-        selectedCategory = button.dataset.category;
-
-        displayFiles();
+    runtime.setStdout({
+      batched: message => writeOutput(message)
     });
+
+    runtime.setStderr({
+      batched: message => writeOutput(message, "error")
+    });
+
+    await runtime.runPythonAsync(code);
+
+    setStatus("Python executed");
+  } catch (error) {
+    writeOutput(error.message || String(error), "error");
+    setStatus("Python execution failed");
+  }
+}
+
+async function runCode() {
+  files[activeFile] = editor.getValue();
+
+  const extension = getExtension(activeFile);
+
+  if (["html", "htm"].includes(extension)) {
+    runHTML();
+  } else if (["js", "mjs"].includes(extension)) {
+    runJavaScript(editor.getValue());
+  } else if (extension === "py") {
+    await runPython(editor.getValue());
+  } else if (extension === "css") {
+    files["style.css"] = editor.getValue();
+    runHTML();
+  } else {
+    clearOutput();
+    showPanel("output");
+    writeOutput(`No runner available for .${extension} files.`, "error");
+  }
+}
+
+// Initialize IDE
+loadProject();
+
+editor = CodeMirror($("editorHost"), {
+  value: files[activeFile],
+  mode: getMode(activeFile),
+  theme: "material-darker",
+  lineNumbers: true,
+  indentUnit: 2,
+  tabSize: 2,
+  lineWrapping: false,
+  autofocus: true
 });
 
-
-// ============================================
-// PUBLIC FILE UPLOAD
-// ============================================
-
-uploadForm.addEventListener("submit", async event => {
-    event.preventDefault();
-
-    const name = document.getElementById("fileName").value.trim();
-    const description =
-        document.getElementById("fileDescription").value.trim();
-
-    const category = document.getElementById("fileCategory").value;
-    const fileInput = document.getElementById("fileUpload");
-    const file = fileInput.files[0];
-
-    if (!name) {
-        showMessage(uploadMessage, "Please enter a file title.", "error");
-        return;
-    }
-
-    if (!file) {
-        showMessage(uploadMessage, "Please choose a file.", "error");
-        return;
-    }
-
-    uploadButton.disabled = true;
-    uploadButton.textContent = "Uploading...";
-
-    showMessage(uploadMessage, "Uploading your file...");
-
-    // Create a unique storage path.
-    const safeFilename = file.name.replace(
-        /[^a-zA-Z0-9._-]/g,
-        "_"
-    ) || "uploaded-file";
-
-    const storagePath =
-        `${crypto.randomUUID()}-${safeFilename}`;
-
-    let uploaded = false;
-
-    try {
-        // Upload the file to Supabase Storage.
-        const { error: storageError } = await supabaseClient
-            .storage
-            .from(BUCKET_NAME)
-            .upload(storagePath, file, {
-                contentType: file.type || "application/octet-stream",
-                upsert: false
-            });
-
-        if (storageError) {
-            throw storageError;
-        }
-
-        uploaded = true;
-
-        showMessage(
-            uploadMessage,
-            "File uploaded. Publishing it now..."
-        );
-
-        // Create a public database entry immediately.
-        const { error: databaseError } = await supabaseClient
-            .from("files")
-            .insert({
-                name: name,
-                description: description,
-                category: category,
-                original_filename: file.name,
-                storage_path: storagePath,
-                mime_type: file.type || "application/octet-stream",
-                size_bytes: file.size,
-                is_published: true,
-                uploaded_by: null
-            });
-
-        if (databaseError) {
-            throw databaseError;
-        }
-
-        uploadForm.reset();
-
-        showMessage(
-            uploadMessage,
-            "Your file has been published successfully!",
-            "success"
-        );
-
-        await loadFiles();
-
-    } catch (error) {
-        console.error("Upload failed:", error);
-
-        // Remove the uploaded object if its database entry failed.
-        if (uploaded) {
-            const { error: cleanupError } = await supabaseClient
-                .storage
-                .from(BUCKET_NAME)
-                .remove([storagePath]);
-
-            if (cleanupError) {
-                console.error("Storage cleanup failed:", cleanupError);
-            }
-        }
-
-        showMessage(
-            uploadMessage,
-            error.message || "Upload failed. Please try again.",
-            "error"
-        );
-
-    } finally {
-        uploadButton.disabled = false;
-        uploadButton.textContent = "Publish File";
-    }
+editor.on("change", () => {
+  files[activeFile] = editor.getValue();
+  setStatus("Unsaved changes");
 });
 
+$("saveBtn").onclick = saveProject;
+$("runBtn").onclick = runCode;
+$("newFileBtn").onclick = createFile;
+$("newFolderBtn").onclick = createFolder;
 
-// ============================================
-// START WEBSITE
-// ============================================
+$("previewBtn").onclick = runHTML;
 
-loadFiles();
+$("terminalBtn").onclick = () => showPanel("terminal");
+
+$("closePanel").onclick = () => {
+  $("bottomPanel").classList.add("closed");
+};
+
+document.querySelectorAll(".panel-tab").forEach(tab => {
+  tab.onclick = () => showPanel(tab.dataset.panel);
+});
+
+$("searchToggle").onclick = () => {
+  const query = prompt("Search in the current file:");
+
+  if (!query) return;
+
+  const content = editor.getValue();
+  const index = content.indexOf(query);
+
+  if (index === -1) {
+    alert("Text not found.");
+    return;
+  }
+
+  editor.focus();
+  editor.setSelection(
+    editor.posFromIndex(index),
+    editor.posFromIndex(index + query.length)
+  );
+};
+
+renderFileTree();
+renderTabs();
+setStatus("Ready");
